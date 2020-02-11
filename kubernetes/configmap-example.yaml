@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-config
+  namespace: blog
+  labels:
+    name: wordpress-config
+data:
+  VALUE_OF_ENV: ""
