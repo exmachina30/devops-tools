@@ -25,7 +25,7 @@ persistence:
   ## Requires persistence.enabled: true
   ## If defined, PVC must be created manually before volume will be bound
   # existingClaim:
-  existingClaim: task-pv-claim
+  existingClaim: pv-claim
   ## openvpn data Persistent Volume Storage Class
   ## If defined, storageClassName: <storageClass>
   ## If set to "-", storageClassName: "", which disables dynamic provisioning
@@ -35,7 +35,7 @@ persistence:
   ##
   # storageClass: "-"
   accessMode: ReadWriteOnce
-  size: 1Gi
+  size: 10Gi
 openvpn:
   # Network allocated for openvpn clients (default: 10.240.0.0).
   OVPN_NETWORK: 10.240.0.0
