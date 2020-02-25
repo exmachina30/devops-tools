@@ -2,22 +2,53 @@ stages:
     - build
     - deploy
   
-build-images:
+build-images-staging:
     stage: build
+    only:
+      - staging
+      - tags
     tags:
       - php
     script:
       - rm -rf composer.lock  
       - docker build -t $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID .
       - docker push $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID
-      - number="$(cat $K8S_PATH | grep asgard-backoffice:staging  | cut -d ":" -f 3 | cut -d "-" -f 2)" && sed -i "s/:staging-${number}/:staging-${CI_PIPELINE_ID}/" $K8S_PATH
+      - number="$(cat $K8S_PATH_STAGING | grep asgard-backoffice:staging  | cut -d ":" -f 3 | cut -d "-" -f 2)" && sed -i "s/:staging-${number}/:staging-${CI_PIPELINE_ID}/" $K8S_PATH_STAGING
   
-deploy-k8s:
+deploy-k8s-staging:
     stage: deploy
+    only:
+      - staging
+      - tags
     tags:
       - php
     script: 
-      - kcs config_staging
-      - kubectl apply -f $K8S_PATH
+      - kcs $K8S_CONFIG_STAGING
+      - kubectl apply -f $K8S_PATH_STAGING
+      - docker rmi $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID
+
+build-images-production:
+    stage: build
+    only:
+      - master
+      - tags
+    tags:
+      - php
+    script:
+      - rm -rf composer.lock  
+      - docker build -t $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID .
+      - docker push $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID
+      - number="$(cat $K8S_PATH_PRODUCTION | grep asgard-backoffice:master  | cut -d ":" -f 3 | cut -d "-" -f 2)" && sed -i "s/:master-${number}/:master-${CI_PIPELINE_ID}/" $K8S_PATH_PRODUCTION
+  
+deploy-k8s-production:
+    stage: deploy
+    only:
+      - master
+      - tags
+    tags:
+      - php
+    script: 
+      - kcs $K8S_CONFIG_PRODUCTION
+      - kubectl apply -f $K8S_PATH_PRODUCTION
       - docker rmi $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID
 
