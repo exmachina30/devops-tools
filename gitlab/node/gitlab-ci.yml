@@ -1,0 +1,22 @@
+stages:
+    - build
+    - deploy
+  
+build-images:
+    stage: build
+    tags:
+      - node
+    script:
+      - docker build -t $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID .
+      - docker push $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID
+      - number="$(cat $K8S_PATH | grep asgard-institutional-frontend:staging  | cut -d ":" -f 3 | cut -d "-" -f 2)" && sed -i "s/:staging-${number}/:staging-${CI_PIPELINE_ID}/" $K8S_PATH
+  
+deploy-k8s:
+    stage: deploy
+    tags:
+      - node
+    script: 
+      - kcs config_staging
+      - kubectl apply -f $K8S_PATH
+      - docker rmi $REGISTRY:$ENVIRONMENT-$CI_PIPELINE_ID
+
