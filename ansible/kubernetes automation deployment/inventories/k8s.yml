@@ -1,0 +1,4 @@
+plugin: k8s
+connections:
+    - kubeconfig: /home/amelfqhyh/.kube/config
+    - context: minikube

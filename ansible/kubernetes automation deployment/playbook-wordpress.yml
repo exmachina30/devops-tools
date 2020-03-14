@@ -1,0 +1,64 @@
+---
+- hosts: minikube
+  tasks:
+  - name: Create service of Wordpress
+    k8s:
+        state: present
+        definition:
+            apiVersion: v1
+            kind: Service
+            metadata: 
+              name: wordpress-svc
+              namespace: blog
+            spec:
+              selector:
+                app: wordpress
+              ports:
+                - protocol: TCP
+                  port: 80
+                  targetPort: 80
+  - name: Create deployment of Wordpress
+    k8s:
+        state: present
+        definition: 
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata: 
+              name: wordpress
+              namespace: blog
+              labels:
+                app: wordpress
+            spec:
+              replicas: 1
+              selector:
+                matchLabels: 
+                  app: wordpress
+              template:
+                metadata:
+                  labels:
+                    app: wordpress
+                spec:
+                  containers:
+                  - name: wordpress
+                    image: wordpress
+                    env: 
+                    - name: WORDPRESS_DB_HOST
+                      value: mysql:3306
+                    - name: WORDPRESS_DB_NAME
+                      value: blog
+                    - name: WORDPRESS_DB_USER
+                      valueFrom:
+                        secretKeyRef:
+                            name: mysql-secret
+                            key: user
+                    - name: WORDPRESS_DB_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                            name: mysql-secret
+                            key: password
+                    ports:
+                    - containerPort: 80
+                    resources:
+                      limits:
+                        memory: "512Mi"
+                        cpu: "100m"
