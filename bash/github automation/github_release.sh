@@ -6,7 +6,7 @@ read -p 'Insert username your GitHub : '  USER
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 REPO=${PWD##*/}
-TOKEN="ee54de641518ab90566d2a7a085ce51cd187cc0f"
+TOKEN="<YOUR_GITHUB_TOKEN>"
 
 echo "Create release $VERSION for repo: $REPO branch: $BRANCH"
 API_JSON=$(printf '{"tag_name": "%s","target_commitish": "%s","name": "%s","body": "%s","draft": false,"prerelease": false}' $VERSION $BRANCH $VERSION $TEXT)
