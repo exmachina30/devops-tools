@@ -31,6 +31,7 @@
               user: aGFraW1yaXpraQ==
               password: bWlkdHJhbnMtZGV2b3Bz
               root_password: dG9vcg==
+              
   - name: Create deployment of MySQL
     k8s:
         state: present

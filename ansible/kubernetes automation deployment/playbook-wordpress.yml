@@ -17,6 +17,7 @@
                 - protocol: TCP
                   port: 80
                   targetPort: 80
+                  
   - name: Create deployment of Wordpress
     k8s:
         state: present
