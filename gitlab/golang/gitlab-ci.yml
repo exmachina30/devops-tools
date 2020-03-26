@@ -6,53 +6,71 @@ build-images-staging:
     stage: build
     only:
       - staging
-      - tags
     tags:
       - golang
     script:
       - GO111MODULE=on go mod tidy
-      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/asgard-bivrost cmd/redishttp/main.go
-      - docker build -t $REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID .
-      - docker push $REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID
+      - GOOS=linux GOARCH=amd64 go build -o bin/asgard-activity 
+      - docker build -t $REGISTRY:staging-v1.$CI_RUNNER_ID .
+      - docker push $REGISTRY:$staging-v1.$CI_RUNNER_ID
       - kcs $K8S_CONFIG_STAGING
-      - eval "kubectl patch deploy $DEPLOY_STAGING -n test --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"image\":\"$REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID\",\"name\":\"$DEPLOY_STAGING\"}]}}}}'"
+      - eval "kubectl patch deploy $DEPLOY_STAGING -n test --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"image\":\"$REGISTRY:staging-v1.$CI_RUNNER_ID\",\"name\":\"$DEPLOY_STAGING\"}]}}}}'"
   
 deploy-k8s-staging:
     stage: deploy
     only:
       - staging
-      - tags
     tags:
       - golang
     script: 
       - kubectl apply -f $K8S_PATH_STAGING
-      - docker rmi $REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID
+      - docker rmi $REGISTRY:staging-v1.$CI_RUNNER_ID
   
 build-images-master:
     stage: build
     only:
       - master
       - merge_request
-      - tags
     tags:
       - golang
     script:
       - GO111MODULE=on go mod tidy
-      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/asgard-bivrost cmd/redishttp/main.go
-      - docker build -t $REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID .
-      - docker push $REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID
+      - GOOS=linux GOARCH=amd64 go build -o bin/asgard-activity 
+      - docker build -t $REGISTRY:master-v1.$CI_RUNNER_ID .
+      - docker push $REGISTRY:master-v1.$CI_RUNNER_ID
       - kcs $K8S_CONFIG_UAT
-      - eval "kubectl patch deploy $DEPLOY_UAT -n core --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"image\":\"$REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID\",\"name\":\"$DEPLOY_UAT\"}]}}}}'"
+      - eval "kubectl patch deploy $DEPLOY_UAT -n test --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"image\":\"$REGISTRY:master-v1.$CI_RUNNER_ID\",\"name\":\"$DEPLOY_UAT\"}]}}}}'"
   
 deploy-k8s-master:
     stage: deploy
     only:
       - master
       - merge_request
-      - tags
     tags:
       - golang
     script: 
       - kubectl apply -f $K8S_PATH_UAT
-      - docker rmi $REGISTRY:$ENVIRONMENT-v1.$CI_RUNNER_ID
+      - docker rmi $REGISTRY:master-v1.$CI_RUNNER_ID
+
+build-images-production:
+    stage: build
+    tags:
+      - golang
+    script:
+      - git checkout tags/$(git describe --tags `git rev-list --tags --max-count=1`)
+      - GO111MODULE=on go mod tidy
+      - GOOS=linux GOARCH=amd64 go build -o bin/asgard-activity 
+      - docker build -t $REGISTRY:prod-v1.$CI_RUNNER_ID .
+      - docker push $REGISTRY:prod-v1.$CI_RUNNER_ID
+      - kcs $K8S_CONFIG_PROD
+      - eval "kubectl patch deploy $DEPLOY_PROD -n test1 --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"image\":\"$REGISTRY:prod-v1.$CI_RUNNER_ID\",\"name\":\"$DEPLOY_PROD\"}]}}}}'"
+  
+deploy-k8s-production:
+    stage: deploy
+    tags:
+      - golang
+    script: 
+      - kubectl apply -f $K8S_PATH_PROD
+      - docker rmi $REGISTRY:prod-v1.$CI_RUNNER_ID
+  
   

@@ -1,0 +1,33 @@
+---
+    - hosts: server1
+      become: yes
+      become_user: root
+      tasks:
+        - name: Change the hostname of the system
+          command: hostnamectl set-hostname server.foreman.io
+        
+        - name: Change the IP Address and the domain name
+          shell:
+            cmd: |
+              cat <<EOF >/etc/hosts
+              10.148.0.4   server.foreman.io   server
+              EOF
+        
+        - name: Install ca-certificates
+          apt:
+            name: ca-certificates
+        
+        - name: Add the puppet repository 
+          apt:
+            deb: https://apt.puppetlabs.com/puppet5-release-bionic.deb
+    
+        - name: Add the foreman key
+          apt_key: url=https://deb.theforeman.org/pubkey.gpg
+
+        - name: Install foreman-installer
+          apt:
+            name: foreman-installer
+            update_cache: yes
+        
+        - name: Run foreman-installer
+          command: foreman-installer
