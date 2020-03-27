@@ -5,8 +5,8 @@ RESPONSE=$(curl -s https://api.github.com/orgs/koinworks/repos?access_token=<YOU
 for row in $(echo "${RESPONSE}" | jq -r '.[].name'); do
     git clone git@github.com:koinworks/$row.git
     cd $row
-    git remote add upstream https://gitlab-engineering.koinworks.com/koinworks/$row.git
     for b in `git branch -r | grep -v -- '->'`; do git branch --track ${b##origin/} $b; done
+    git remote add upstream https://gitlab-engineering.koinworks.com/koinworks/$row.git
     git push upstream --all
     cd ..
 done
