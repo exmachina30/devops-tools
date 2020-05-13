@@ -10,7 +10,7 @@
           shell:
             cmd: |
               cat <<EOF >/etc/hosts
-              10.148.0.4   server.foreman.io   server
+              10.148.0.32   server.foreman.io   server
               EOF
         
         - name: Install ca-certificates
@@ -22,12 +22,15 @@
             deb: https://apt.puppetlabs.com/puppet5-release-bionic.deb
     
         - name: Add the foreman key
-          apt_key: url=https://deb.theforeman.org/pubkey.gpg
+          apt_key: 
+            url: https://deb.theforeman.org/pubkey.gpg
+            validate_certs: no
+        
+        - name: Install foreman-installer
+          apt: 
+            update_cache: yes
 
         - name: Install foreman-installer
-          apt:
-            name: foreman-installer
-            update_cache: yes
-        
-        - name: Run foreman-installer
-          command: foreman-installer
+          apt: 
+            name: foreman-installer 
+      

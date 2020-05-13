@@ -1,65 +1,107 @@
 ---
-- hosts: minikube
-  tasks:
-  - name: Create service of Wordpress
-    k8s:
-        state: present
-        definition:
-            apiVersion: v1
-            kind: Service
-            metadata: 
-              name: wordpress-svc
-              namespace: blog
-            spec:
-              selector:
-                app: wordpress
-              ports:
-                - protocol: TCP
-                  port: 80
-                  targetPort: 80
-                  
-  - name: Create deployment of Wordpress
-    k8s:
-        state: present
-        definition: 
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata: 
-              name: wordpress
-              namespace: blog
-              labels:
-                app: wordpress
-            spec:
-              replicas: 1
-              selector:
-                matchLabels: 
-                  app: wordpress
-              template:
+    - hosts: kubeadm
+      tasks:
+      - name: Create persistent volume of Wordpress
+        k8s:
+            state: present
+            definition:
+                apiVersion: v1
+                kind: PersistentVolume
                 metadata:
+                  name: wordpress-persistent-storage
+                  namespace: blog
+                  labels:
+                    app: wordpress
+                    tier: frontend
+                spec:
+                  capacity:
+                    storage: 10Gi
+                  accessModes:
+                    - ReadWriteOnce
+                  nfs:
+                    server: 10.128.0.2
+                    path: "/html"
+
+      - name: Create persistent volume claim of Wordpress
+        k8s:
+            state: present
+            definition:
+                apiVersion: v1
+                kind: PersistentVolumeClaim
+                metadata:
+                  name: wordpress-persistent-storage
+                  namespace: blog
                   labels:
                     app: wordpress
                 spec:
-                  containers:
-                  - name: wordpress
-                    image: wordpress
-                    env: 
-                    - name: WORDPRESS_DB_HOST
-                      value: mysql:3306
-                    - name: WORDPRESS_DB_NAME
-                      value: blog
-                    - name: WORDPRESS_DB_USER
-                      valueFrom:
-                        secretKeyRef:
-                            name: mysql-secret
-                            key: user
-                    - name: WORDPRESS_DB_PASSWORD
-                      valueFrom:
-                        secretKeyRef:
-                            name: mysql-secret
-                            key: password
-                    ports:
-                    - containerPort: 80
-                    resources:
-                      limits:
-                        memory: "512Mi"
-                        cpu: "100m"
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 6Gi
+        
+      - name: Create service of Wordpress
+        k8s:
+            state: present
+            definition:
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: wordpress
+                  namespace: blog
+                  labels:
+                    app: wordpress
+                spec:
+                  ports:
+                    - nodePort: 30941
+                      port: 80
+                  selector:
+                    app: wordpress
+                    tier: frontend
+                  type: NodePort
+                      
+      - name: Create deployment of Wordpress
+        k8s:
+            state: present
+            definition: 
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: wordpress
+                  namespace: blog
+                  labels:
+                    app: wordpress
+                spec:
+                  selector:
+                    matchLabels:
+                      app: wordpress
+                      tier: frontend
+                  strategy:
+                    type: Recreate
+                  template:
+                    metadata:
+                      labels:
+                        app: wordpress
+                        tier: frontend
+                    spec:
+                      containers:
+                      - image: wordpress:4.8-apache
+                        name: wordpress
+                        env:
+                        - name: WORDPRESS_DB_HOST
+                          value: wordpress-mysql
+                        - name: WORDPRESS_DB_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: mysql-pass          
+                              key: password
+                        ports:
+                        - containerPort: 80
+                          name: wordpress
+                        volumeMounts:
+                        - name: wordpress-persistent-storage
+                          mountPath: "/var/www/html"       
+                      volumes:
+                      - name: wordpress-persistent-storage
+                        persistentVolumeClaim:
+                          claimName: wordpress-persistent-storage

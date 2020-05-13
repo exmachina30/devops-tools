@@ -1,0 +1,39 @@
+before_script:
+    - TAG=$(git describe --tags `git rev-list --tags --max-count=1`)  
+
+build_staging:
+    only:
+        - staging
+        - master
+    tags:
+        - ios
+    script:
+        - xcodebuild clean -project CI-Demo-iOS/CI-Demo-iOS.xcodeproj -scheme CI-Demo-iOS
+        - xcodebuild test -project CI-Demo-iOS/CI-Demo-iOS.xcodeproj -scheme CI-Demo-iOS -destination 'platform=iOS Simulator,name=iPhone XR,OS=12.0'
+    artifacts:
+      paths:
+      - /home/gitlab-runner/ios/staging/
+
+build_uat:
+    only:
+        - master
+    tags:
+        - ios
+    script:
+        - xcodebuild clean -project CI-Demo-iOS/CI-Demo-iOS.xcodeproj -scheme CI-Demo-iOS
+        - xcodebuild test -project CI-Demo-iOS/CI-Demo-iOS.xcodeproj -scheme CI-Demo-iOS -destination 'platform=iOS Simulator,name=iPhone XR,OS=12.0'
+    artifacts:
+      paths:
+      - /home/gitlab-runner/ios/uat/
+
+build_prod:
+    tags:
+        - ios
+    script:
+        - git checkout tags/$TAG  
+        - xcodebuild clean -project CI-Demo-iOS/CI-Demo-iOS.xcodeproj -scheme CI-Demo-iOS
+        - xcodebuild test -project CI-Demo-iOS/CI-Demo-iOS.xcodeproj -scheme CI-Demo-iOS -destination 'platform=iOS Simulator,name=iPhone XR,OS=12.0'
+    artifacts:
+      paths:
+      - /home/gitlab-runner/ios/release/
+  

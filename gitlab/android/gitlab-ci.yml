@@ -1,0 +1,60 @@
+before_script:
+  - TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+  - export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+  - export PATH=$JAVA_HOME/bin:$PATH
+  - export ANDROID_HOME=/home/gitlab-runner/android-sdk
+  - export PATH=$PATH:/home/gitlab-runner/android-sdk/platform-tools
+  - chmod +x ./gradlew
+  - java -version
+
+cache:
+  key: ${CI_PROJECT_ID}
+  paths:
+  - .gradle/
+
+build-staging:
+  only:
+    - staging
+  tags:
+    - android
+  script: 
+    - ./gradlew -g ~/cache/gradle/superapp-staging clean assembleDebug --parallel --stacktrace --no-daemon -x lint --warning-mode all
+  artifacts:
+    when: on_success
+    expire_in: 1 week
+    paths:
+    - ./app/build/outputs/apk/production/debug/*.apk
+    - ./app/build/outputs/apk/development/debug/*.apk
+    - ./app/build/outputs/apk/staging/debug/*.apk
+
+build-uat:
+  only:
+    - master
+  tags:
+    - android
+  script: 
+    - ./gradlew -g ~/cache/gradle/superapp-uat clean assembleDebug --parallel --stacktrace --no-daemon -x lint --warning-mode all
+  artifacts:
+    when: on_success
+    expire_in: 1 week
+    paths:
+    - ./app/build/outputs/apk/production/debug/*.apk
+    - ./app/build/outputs/apk/development/debug/*.apk
+    - ./app/build/outputs/apk/staging/debug/*.apk
+
+build-production:
+  tags:
+    - android
+  only:
+    - tags
+  script: 
+    - git checkout tags/$TAG  
+    - ./gradlew -g ~/cache/gradle/superapp-release clean assembleDebug --parallel --stacktrace --no-daemon -x lint --warning-mode all
+    - ./gradlew -g ~/cache/gradle/superapp-release clean assembleRelease --parallel --stacktrace --no-daemon -x lint --warning-mode all
+  artifacts:
+    when: on_success
+    expire_in: 1 week
+    paths:
+    - ./app/build/outputs/apk/production/debug/*.apk
+    - ./app/build/outputs/apk/development/debug/*.apk
+    - ./app/build/outputs/apk/staging/debug/*.apk

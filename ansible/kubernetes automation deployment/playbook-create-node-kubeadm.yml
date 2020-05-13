@@ -1,21 +1,24 @@
 ---
-    - hosts: server1,server2
+    - hosts: all
       become: yes
       become_user: root
       tasks:
-        - name: Disable swap memory
-          command: swapoff -a
+        - name: install python-apt
+          apt:
+            name: python-apt
+            update_cache: yes
         
-        - name: Add Docker GPG key
+        - name: add Docker gpg key
           apt_key: url=https://download.docker.com/linux/ubuntu/gpg
     
-        - name: Add Docker APT repository
+        - name: add Docker apt repository
           apt_repository:
-            repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ansible_distribution_release}} stable
+            repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+            filename: docker  
 
-        - name: Install list of packages
+        - name: install list of packages
           apt:
-            name: ['apt-transport-https', 'ca-certificates', 'curl' ,'software-properties-common', 'docker.io']
+            name: ['docker-ce=5:18.09.9~3-0~ubuntu-xenial', 'docker-ce-cli=5:18.09.9~3-0~ubuntu-xenial']
             update_cache: yes
         
         - name: Setup the Docker daemon to use systemd as the cgroup driver
@@ -42,37 +45,70 @@
             state: restarted
             daemon_reload: yes
             name: docker
-    
-        - name: Add the required GPG key to apt-sources keyring to authenticate the Kubernetes
+        
+        - name: add the required gpg key to apt-sources keyring to authenticate the Kubernetes
           apt_key: url=https://packages.cloud.google.com/apt/doc/apt-key.gpg
     
-        - name: Add Kubernetes to the package manager’s list of sources 
+        - name: add Kubernetes to the package manager’s list of sources 
           shell:
             cmd: |
               cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
               deb https://apt.kubernetes.io/ kubernetes-xenial main
               EOF
         
-        - name: Install kubeadm, kubelet, and kubectl
+        - name: install list of packages
           apt:
-            name: ['kubeadm', 'kubelet', 'kubectl']
+            name: ['kubeadm=1.15.12-00', 'kubelet=1.15.12-00', 'kubectl=1.15.12-00', 'kubernetes-cni=0.7.5-00']
             update_cache: yes
+        
+    - hosts: masters
+      gather_facts: true
+      tasks:  
+        - name: initialize the master node
+          become: yes
+          become_user: root
+          command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.128.0.2 --kubernetes-version=1.15.12
+        
+        - name: create .kube directory
+          become: yes
+          become_user: hakimrizky
+          file:
+            path: $HOME/.kube
+            state: directory
 
-        - name: Initialize the master node
-          command: kubeadm init --pod-network-cidr=10.148.0.0/20
+        - name: copy admin.conf to user's kube config
+          become: yes
+          become_user: root
+          copy:
+            src: /etc/kubernetes/admin.conf
+            dest: /home/hakimrizky/.kube/config
+            remote_src: yes
+            owner: hakimrizky
 
-        - name: Initialize to access Kubernetes nodes
-          command: "{{ item }}"
-          with_items: 
-            - mkdir -p $HOME/.kube
-            - sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-            - sudo chown $(id -u):$(id -g) $HOME/.kube/config
+        - name: install pod network
+          become: yes
+          become_user: hakimrizky
+          shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml >> pod_network_setup.txt
+          args:
+            chdir: $HOME
+            creates: pod_network_setup.txt
 
-    - hosts: server1
+        - name: get join command
+          shell: kubeadm token create --print-join-command
+          register: join_command_raw
+
+        - name: set join command
+          set_fact:
+            join_command: "{{ join_command_raw.stdout_lines[0] }}"
+
+    - hosts: workers
       become: yes
       become_user: root
       tasks:  
-        - name: Install Calico on Kubernetes
-          command: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+        - name: join cluster
+          shell: "{{ hostvars['master'].join_command }} --ignore-preflight-errors all  >> node_joined.txt"
+          args:
+            chdir: $HOME
+            creates: node_joined.txt
     
    

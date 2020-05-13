@@ -1,0 +1,57 @@
+---
+    - hosts: masters
+      become: yes
+      become_user: root
+      tasks:
+        - name: Install NFS server
+          apt:
+            name: nfs-kernel-server
+            update_cache: yes
+        
+        - name: Add NFS directory over the private subnet of Kubernetes
+          shell:
+            cmd: |
+              cat <<EOF >/etc/exports
+              / 10.148.15.194/24(rw,sync,no_root_squash)
+              EOF
+        
+        - name: Creates directory
+          file:
+            path: "{{ item }}"
+            state: directory
+          with_items:
+          - /mysql
+          - /html
+
+        - name: Change file ownership, group and permissions /html
+          file:
+            path: /html
+            owner: nobody
+            group: nogroup
+            mode: '0755'
+        
+        - name: Change file ownership, group and permissions /mysql
+          file:
+            path: /mysql
+            owner: nobody
+            group: nogroup
+            mode: '0755'
+
+        - name: Enable NFS
+          command: systemctl enable nfs-server
+
+        - name: Re-read files
+          command: exportfs -ra
+          register: shell_result
+
+        - debug: 
+            var: shell_result.stdout_lines
+    
+    - hosts: workers
+      become: yes
+      become_user: root
+      tasks:
+        - name: Install NFS client
+          apt:
+            name: nfs-common
+            update_cache: yes

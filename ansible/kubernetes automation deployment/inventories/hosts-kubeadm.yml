@@ -1,0 +1,5 @@
+all:
+    hosts: 
+        kubeadm:
+            ansible_user: hakimrizky
+            ansible_connection: local

@@ -1,82 +1,117 @@
 ---
-- hosts: minikube
-  tasks:
-  - name: Create service of MySQL
-    k8s:
-        state: present
-        definition:
-            apiVersion: v1
-            kind: Service
-            metadata:
-              name: mysql
-              namespace: blog
-            spec:
-              selector:
-                app: mysql
-              ports:
-                - protocol: TCP
-                  port: 3306
-                  targetPort: 3306
-    
-  - name: Create secret of MySQL
-    k8s:
-        state: present
-        definition:
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: mysql-secret
-              namespace: blog
-            data:
-              user: aGFraW1yaXpraQ==
-              password: bWlkdHJhbnMtZGV2b3Bz
-              root_password: dG9vcg==
-              
-  - name: Create deployment of MySQL
-    k8s:
-        state: present
-        definition:
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: mysql
-              namespace: blog
-              labels: 
-                app: mysql
-            spec:
-              replicas: 1
-              selector:
-                matchLabels:
-                  app: mysql
-              template:
+    - hosts: kubeadm
+      tasks:
+      - name: Create secret of MySQL
+        k8s:
+            state: present
+            definition:
+                apiVersion: v1
+                kind: Secret
                 metadata:
+                  name: mysql-pass
+                  namespace: blog
+                type: Opaque
+                data:
+                  password: YWRtaW4=
+        
+      - name: Create persistent volume of MySQL
+        k8s:
+            state: present
+            definition:
+                apiVersion: v1
+                kind: PersistentVolume
+                metadata:
+                  name: mysql-persistent-storage
+                  namespace: blog
+                  labels:
+                    app: mysql
+                    tier: mysql
+                spec:
+                  capacity:
+                    storage: 10Gi
+                  accessModes:
+                    - ReadWriteOnce
+                  nfs:
+                    server: 10.128.0.2
+                    path: "/mysql"
+
+      - name: Create persistent volume claim of MySQL
+        k8s:
+            state: present
+            definition:
+                apiVersion: v1
+                kind: PersistentVolumeClaim
+                metadata:
+                  name: mysql-persistent-storage
+                  namespace: blog
                   labels:
                     app: mysql
                 spec:
-                  containers:
-                  - name: mysql
-                    image: mysql:5.7
-                    env:
-                    - name: MYSQL_ROOT_PASSWORD
-                      valueFrom:
-                        secretKeyRef:
-                            name: mysql-secret
-                            key: root_password
-                    - name: MYSQL_DATABASE
-                      value: blog
-                    - name: MYSQL_USER
-                      valueFrom:
-                        secretKeyRef:
-                            name: mysql-secret
-                            key: user
-                    - name: MYSQL_PASSWORD
-                      valueFrom:
-                        secretKeyRef:
-                            name: mysql-secret
-                            key: password
-                    ports:
-                    - containerPort: 3306
-                    resources:
-                      limits:
-                        memory: "512Mi"
-                        cpu: "100m"     
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 6Gi
+    
+      - name: Create service of MySQL
+        k8s:
+            state: present
+            definition:
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: mysql  
+                  namespace: blog
+                  labels:               
+                    app: mysql
+                spec:
+                  ports:
+                    - port: 3306
+                selector:
+                  app: mysql
+                  tier: mysql
+                clusterIP: None
+                  
+      - name: Create deployment of MySQL
+        k8s:
+            state: present
+            definition:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: mysql
+                  namespace: blog
+                  labels:
+                    app: mysql
+                spec:
+                  selector:
+                    matchLabels:
+                      app: mysql
+                      tier: mysql
+                  strategy:
+                    type: Recreate
+                  template:
+                    metadata:
+                      labels:
+                        app: mysql
+                        tier: mysql
+                    spec:
+                      containers:
+                      - image: mysql:5.6
+                        name: mysql
+                        env:
+                        - name: MYSQL_ROOT_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: mysql-pass       
+                              key: password
+                        ports:
+                        - containerPort: 3306
+                          name: mysql
+                        volumeMounts:
+                        - name: mysql-persistent-storage  
+                          mountPath: "/var/lib/mysql"
+                      volumes:
+                      - name: mysql-persistent-storage   
+                        persistentVolumeClaim:
+                          claimName: mysql-persistent-storage
