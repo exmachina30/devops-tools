@@ -67,14 +67,16 @@
         - name: initialize the master node
           become: yes
           become_user: root
-          command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.128.0.2 --kubernetes-version=1.15.12
-        
+          command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.128.0.18 --kubernetes-version=1.15.12
+          tags: init
+
         - name: create .kube directory
           become: yes
           become_user: hakimrizky
           file:
             path: $HOME/.kube
             state: directory
+          tags: init
 
         - name: copy admin.conf to user's kube config
           become: yes
@@ -84,6 +86,7 @@
             dest: /home/hakimrizky/.kube/config
             remote_src: yes
             owner: hakimrizky
+          tags: init
 
         - name: install pod network
           become: yes
@@ -92,6 +95,7 @@
           args:
             chdir: $HOME
             creates: pod_network_setup.txt
+          tags: init
 
         - name: get join command
           shell: kubeadm token create --print-join-command

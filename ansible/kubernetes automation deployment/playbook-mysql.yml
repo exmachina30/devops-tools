@@ -9,7 +9,7 @@
                 kind: Secret
                 metadata:
                   name: mysql-pass
-                  namespace: blog
+                  namespace: default
                 type: Opaque
                 data:
                   password: YWRtaW4=
@@ -22,17 +22,17 @@
                 kind: PersistentVolume
                 metadata:
                   name: mysql-persistent-storage
-                  namespace: blog
+                  namespace: default
                   labels:
-                    app: mysql
+                    app: wordpress
                     tier: mysql
                 spec:
                   capacity:
                     storage: 10Gi
                   accessModes:
-                    - ReadWriteOnce
+                    - ReadWriteMany
                   nfs:
-                    server: 10.128.0.2
+                    server: 10.148.15.211
                     path: "/mysql"
 
       - name: Create persistent volume claim of MySQL
@@ -43,12 +43,12 @@
                 kind: PersistentVolumeClaim
                 metadata:
                   name: mysql-persistent-storage
-                  namespace: blog
+                  namespace: default
                   labels:
-                    app: mysql
+                    app: wordpress
                 spec:
                   accessModes:
-                    - ReadWriteOnce
+                    - ReadWriteMany
                   resources:
                     requests:
                       storage: 6Gi
@@ -60,16 +60,16 @@
                 apiVersion: v1
                 kind: Service
                 metadata:
-                  name: mysql  
-                  namespace: blog
+                  name: mysql 
+                  namespace: default
                   labels:               
-                    app: mysql
+                    app: wordpress
                 spec:
                   ports:
                     - port: 3306
-                selector:
-                  app: mysql
-                  tier: mysql
+                  selector:
+                    app: wordpress
+                    tier: mysql
                 clusterIP: None
                   
       - name: Create deployment of MySQL
@@ -80,20 +80,20 @@
                 kind: Deployment
                 metadata:
                   name: mysql
-                  namespace: blog
+                  namespace: default
                   labels:
-                    app: mysql
+                    app: wordpress
                 spec:
                   selector:
                     matchLabels:
-                      app: mysql
+                      app: wordpress
                       tier: mysql
                   strategy:
                     type: Recreate
                   template:
                     metadata:
                       labels:
-                        app: mysql
+                        app: wordpress
                         tier: mysql
                     spec:
                       containers:
