@@ -67,7 +67,7 @@
         - name: initialize the master node
           become: yes
           become_user: root
-          command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.128.0.18 --kubernetes-version=1.15.12
+          command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=<IP ADDRESS MASTER NODE> --kubernetes-version=1.15.12
           tags: init
 
         - name: create .kube directory
@@ -105,7 +105,7 @@
           set_fact:
             join_command: "{{ join_command_raw.stdout_lines[0] }}"
 
-    - hosts: worker1, worker2
+    - hosts: worker1, worker2, worker3
       become: yes
       become_user: root
       tasks:  

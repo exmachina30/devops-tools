@@ -1,5 +1,5 @@
 plugin: k8s
 connections:
-  - host: https://10.148.0.36:6443
-    token: 3stl4k.xrz1jvvsq0lnmbqj
+  - host: <IP CLUSTER:PORT>
+    token: <KUBEADM TOKEN>
     validate_certs: false

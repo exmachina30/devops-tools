@@ -12,7 +12,7 @@
           shell:
             cmd: |
               cat <<EOF >/etc/exports
-              / 10.148.15.194/24(rw,sync,no_root_squash)
+              / <IP NETWORK/PREFIX MASTER NODE>(rw,sync,no_root_squash)
               EOF
         
         - name: Creates directory

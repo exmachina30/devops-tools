@@ -1,4 +1,4 @@
 plugin: k8s
 connections:
-    - kubeconfig: /home/amelfqhyh/.kube/config
+    - kubeconfig: </Users/name/.kube/config>
     - context: minikube

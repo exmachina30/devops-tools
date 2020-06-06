@@ -32,7 +32,7 @@
                   accessModes:
                     - ReadWriteMany
                   nfs:
-                    server: 10.148.15.211
+                    server: <IP ADDRESS MASTER NODE>
                     path: "/mysql"
 
       - name: Create persistent volume claim of MySQL

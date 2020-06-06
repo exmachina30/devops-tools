@@ -1,5 +1,5 @@
 all:
     hosts: 
         minikube:
-            ansible_user: amelfqhyh
+            ansible_user: <User where kubectl accessed>
             ansible_connection: local

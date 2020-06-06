@@ -19,7 +19,7 @@
                   accessModes:
                     - ReadWriteMany
                   nfs:
-                    server: 10.148.15.211
+                    server: <IP ADDRESS MASTER NODE>
                     path: "/html"
 
       - name: Create persistent volume claim of Wordpress
