@@ -1,118 +1,115 @@
 ---
-    - hosts: all
-      become: yes
-      become_user: root
-      tasks:
-        - name: install python-apt
-          apt:
-            name: python-apt
-            update_cache: yes
-        
-        - name: add Docker gpg key
-          apt_key: url=https://download.docker.com/linux/ubuntu/gpg
-    
-        - name: add Docker apt repository
-          apt_repository:
-            repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
-            filename: docker  
+  - hosts: all
+    become: yes
+    become_user: root
+    tasks:
+      - name: install python-apt
+        apt:
+          name: python-apt
+          update_cache: yes
+      
+      - name: add Docker gpg key
+        apt_key: url=https://download.docker.com/linux/ubuntu/gpg
+  
+      - name: add Docker apt repository
+        apt_repository:
+          repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+          filename: docker  
 
-        - name: install list of packages
-          apt:
-            name: ['docker-ce=5:18.09.9~3-0~ubuntu-xenial', 'docker-ce-cli=5:18.09.9~3-0~ubuntu-xenial']
-            update_cache: yes
-        
-        - name: Setup the Docker daemon to use systemd as the cgroup driver
-          shell:
-            cmd: |
-              cat > /etc/docker/daemon.json <<EOF
-              {
-                "exec-opts": ["native.cgroupdriver=systemd"],
-                "log-driver": "json-file",
-                "log-opts": {
-                  "max-size": "100m"
-                },
-                "storage-driver": "overlay2"
-              }
-              EOF
+      - name: install list of packages
+        apt:
+          name: ['docker-ce=5:18.09.9~3-0~ubuntu-xenial', 'docker-ce-cli=5:18.09.9~3-0~ubuntu-xenial']
+          update_cache: yes
+      
+      - name: Setup the Docker daemon to use systemd as the cgroup driver
+        shell:
+          cmd: |
+            cat > /etc/docker/daemon.json <<EOF
+            {
+              "exec-opts": ["native.cgroupdriver=systemd"],
+              "log-driver": "json-file",
+              "log-opts": {
+                "max-size": "100m"
+              },
+              "storage-driver": "overlay2"
+            }
+            EOF
+      - name: Create a systemd directory for Docker
+        file:
+          path: /etc/systemd/system/docker.service.d
+          state: directory
+      
+      - name: Restart Docker
+        systemd:
+          state: restarted
+          daemon_reload: yes
+          name: docker
+      
+      - name: add the required gpg key to apt-sources keyring to authenticate the Kubernetes
+        apt_key: url=https://packages.cloud.google.com/apt/doc/apt-key.gpg
+  
+      - name: add Kubernetes to the package manager’s list of sources 
+        shell:
+          cmd: |
+            cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
+            deb https://apt.kubernetes.io/ kubernetes-xenial main
+            EOF
+      
+      - name: install list of packages
+        apt:
+          name: ['kubeadm=1.15.12-00', 'kubelet=1.15.12-00', 'kubectl=1.15.12-00', 'kubernetes-cni=0.7.5-00']
+          update_cache: yes
+      
+  - hosts: master
+    gather_facts: true
+    tasks:  
+      - name: initialize the master node
+        become: yes
+        become_user: root
+        command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=<IP ADDRESS MASTER NODE> --kubernetes-version=1.15.12
+        tags: init
 
-        - name: Create a systemd directory for Docker
-          file:
-            path: /etc/systemd/system/docker.service.d
-            state: directory
-        
-        - name: Restart Docker
-          systemd:
-            state: restarted
-            daemon_reload: yes
-            name: docker
-        
-        - name: add the required gpg key to apt-sources keyring to authenticate the Kubernetes
-          apt_key: url=https://packages.cloud.google.com/apt/doc/apt-key.gpg
-    
-        - name: add Kubernetes to the package manager’s list of sources 
-          shell:
-            cmd: |
-              cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
-              deb https://apt.kubernetes.io/ kubernetes-xenial main
-              EOF
-        
-        - name: install list of packages
-          apt:
-            name: ['kubeadm=1.15.12-00', 'kubelet=1.15.12-00', 'kubectl=1.15.12-00', 'kubernetes-cni=0.7.5-00']
-            update_cache: yes
-        
-    - hosts: master
-      gather_facts: true
-      tasks:  
-        - name: initialize the master node
-          become: yes
-          become_user: root
-          command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=<IP ADDRESS MASTER NODE> --kubernetes-version=1.15.12
-          tags: init
+      - name: create .kube directory
+        become: yes
+        become_user: hakimrizky
+        file:
+          path: $HOME/.kube
+          state: directory
+        tags: init
 
-        - name: create .kube directory
-          become: yes
-          become_user: hakimrizky
-          file:
-            path: $HOME/.kube
-            state: directory
-          tags: init
+      - name: copy admin.conf to user's kube config
+        become: yes
+        become_user: root
+        copy:
+          src: /etc/kubernetes/admin.conf
+          dest: /home/hakimrizky/.kube/config
+          remote_src: yes
+          owner: hakimrizky
+        tags: init
 
-        - name: copy admin.conf to user's kube config
-          become: yes
-          become_user: root
-          copy:
-            src: /etc/kubernetes/admin.conf
-            dest: /home/hakimrizky/.kube/config
-            remote_src: yes
-            owner: hakimrizky
-          tags: init
+      - name: install pod network
+        become: yes
+        become_user: hakimrizky
+        shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml >> pod_network_setup.txt
+        args:
+          chdir: $HOME
+          creates: pod_network_setup.txt
+        tags: init
 
-        - name: install pod network
-          become: yes
-          become_user: hakimrizky
-          shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml >> pod_network_setup.txt
-          args:
-            chdir: $HOME
-            creates: pod_network_setup.txt
-          tags: init
+      - name: get join command
+        shell: kubeadm token create --print-join-command
+        register: join_command_raw
 
-        - name: get join command
-          shell: kubeadm token create --print-join-command
-          register: join_command_raw
+      - name: set join command
+        set_fact:
+          join_command: "{{ join_command_raw.stdout_lines[0] }}"
 
-        - name: set join command
-          set_fact:
-            join_command: "{{ join_command_raw.stdout_lines[0] }}"
-
-    - hosts: worker1, worker2, worker3
-      become: yes
-      become_user: root
-      tasks:  
-        - name: join cluster
-          shell: "{{ hostvars['master'].join_command }} --ignore-preflight-errors all  >> node_joined.txt"
-          args:
-            chdir: $HOME
-            creates: node_joined.txt
-    
-   
+  - hosts: worker1, worker2, worker3
+    become: yes
+    become_user: root
+    tasks:  
+      - name: join cluster
+        shell: "{{ hostvars['master'].join_command }} --ignore-preflight-errors all  >> node_joined.txt"
+        args:
+          chdir: $HOME
+          creates: node_joined.txt
