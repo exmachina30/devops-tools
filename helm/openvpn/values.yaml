@@ -14,18 +14,18 @@ service:
   # nodePort: 32085
 resources:
   limits:
-    cpu: 300m
-    memory: 128Mi
+    cpu: 100m
+    memory: 64Mi
   requests:
-    cpu: 300m
-    memory: 128Mi
+    cpu: 100m
+    memory: 64Mi
 persistence:
   enabled: true
   ## A manually managed Persistent Volume and Claim
   ## Requires persistence.enabled: true
   ## If defined, PVC must be created manually before volume will be bound
   # existingClaim:
-  existingClaim: pv-claim
+  existingClaim: openvpn-data-claim
   ## openvpn data Persistent Volume Storage Class
   ## If defined, storageClassName: <storageClass>
   ## If set to "-", storageClassName: "", which disables dynamic provisioning
@@ -35,7 +35,7 @@ persistence:
   ##
   # storageClass: "-"
   accessMode: ReadWriteOnce
-  size: 10Gi
+  size: 1Gi
 openvpn:
   # Network allocated for openvpn clients (default: 10.240.0.0).
   OVPN_NETWORK: 10.240.0.0
