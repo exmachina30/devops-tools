@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: default-config
-  namespace: default-namespace
-  labels:
-    name: default-config
-data:
-  VALUE_OF_ENV: ""
