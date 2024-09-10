@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-tools-variables
+  namespace: ${NAMESPACE:=justice}
+  labels:
+    app: backup-tools
+    component: justice
+    stage: ${STAGE:=dev}
+    tier: backend
+data:
+  S3_BUCKET_NAME: ${S3_BUCKET_NAME}
